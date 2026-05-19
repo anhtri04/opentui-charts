@@ -1,0 +1,20 @@
+{
+  "name": "@opentui-charts/example-basic-dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun src/index.tsx",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.2.14",
+    "@opentui/react": "^0.2.14",
+    "@opentui-charts/react": "0.0.0",
+    "react": "^19.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0"
+  }
+}

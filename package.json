@@ -1,0 +1,28 @@
+{
+  "name": "opentui-charts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "packageManager": "npm@10.9.3",
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "@opentui/core": "^0.2.14",
+    "@opentui/react": "^0.2.14",
+    "react": "^19.2.6",
+    "react-reconciler": "^0.32.0",
+    "scheduler": "^0.26.0",
+    "tsx": "^4.22.3"
+  }
+}
