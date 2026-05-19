@@ -95,17 +95,24 @@ This separation makes the library easier to test, easier to maintain, and easier
 
 Charts should work in different terminal environments.
 
-The library should support multiple rendering modes:
+The library should support multiple rendering modes over time:
 
 ```ts
-renderMode: "ascii" | "unicode" | "braille"
+renderMode: "ascii" | "unicode"
 ```
 
 - `ascii`: maximum compatibility
 - `unicode`: good default visual quality
+
+Braille rendering should be treated as a future mode:
+
+```ts
+renderMode: "braille"
+```
+
 - `braille`: high-density plotting for line/scatter-style charts
 
-Users should be able to choose compatibility over visual quality when needed.
+Users should be able to choose compatibility over visual quality when needed. For v0.1, expose only modes that are fully implemented and snapshot-tested.
 
 ## 4. Target Users
 
@@ -205,8 +212,12 @@ export type DrawCommand =
   | RectCommand
   | LineCommand;
 
-export type RenderMode = "ascii" | "unicode" | "braille";
+export type ChartColor = string;
+
+export type RenderMode = "ascii" | "unicode";
 ```
+
+Braille rendering should be reserved for a later version unless it is implemented fully and tested. Avoid exposing unsupported render modes in the stable v0.1 API.
 
 Should avoid:
 
@@ -286,16 +297,16 @@ type DrawCommand =
       x: number;
       y: number;
       char: string;
-      fg?: string;
-      bg?: string;
+      fg?: ChartColor;
+      bg?: ChartColor;
     }
   | {
       type: "text";
       x: number;
       y: number;
       text: string;
-      fg?: string;
-      bg?: string;
+      fg?: ChartColor;
+      bg?: ChartColor;
       maxWidth?: number;
     }
   | {
@@ -305,20 +316,54 @@ type DrawCommand =
       width: number;
       height: number;
       char?: string;
-      fg?: string;
-      bg?: string;
+      fg?: ChartColor;
+      bg?: ChartColor;
+    }
+  | {
+      type: "line";
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      char?: string;
+      fg?: ChartColor;
+      bg?: ChartColor;
     };
 ```
 
 This is the boundary between chart logic and terminal rendering.
+
+For v0.1, `LineCommand` should remain part of the command model. It is useful for axes, grid lines, trend lines, and future renderer optimizations. Line rendering must still be deterministic across adapters: the command contract should define how line endpoints, clipping, and terminal-cell rasterization behave. More complex semantic path commands may be added later if there is a clear need.
 
 The command model allows:
 
 - pure unit testing
 - snapshot testing
 - support for multiple rendering targets
-- future export to string output
+- rendering to plain strings for tests, docs, and non-OpenTUI output
 - future support for non-OpenTUI terminal renderers
+
+### 8.1 Command Rendering Invariants
+
+Core command generation should follow these invariants:
+
+- commands must not draw outside the requested chart width and height
+- all coordinates must be integer terminal-cell coordinates
+- command order is paint order
+- later commands overwrite earlier commands when they target the same cell
+- text should be clipped to `maxWidth` and/or chart bounds
+- adapters should not reinterpret chart geometry
+- adapters should render `LineCommand` consistently with the core command contract
+- adapters should only translate commands into their target rendering backend
+
+A plain string renderer should be included in core for tests, documentation, and non-OpenTUI output:
+
+```ts
+export function renderCommandsToString(
+  commands: DrawCommand[],
+  size: ChartSize
+): string;
+```
 
 ## 9. Coordinate System
 
@@ -343,7 +388,15 @@ Example:
 
 All chart algorithms should operate on integer terminal-cell coordinates.
 
-For high-resolution rendering, such as Braille charts, the logical data resolution can be higher than terminal cell resolution, but the final output should still become terminal cells.
+Core render functions should always receive concrete dimensions:
+
+```ts
+createLineChartCommands({ data, width, height, options })
+```
+
+Inferring size from OpenTUI layout should be the responsibility of the OpenTUI adapter or framework binding, not the core package.
+
+For high-resolution rendering, such as future Braille charts, the logical data resolution can be higher than terminal cell resolution, but the final output should still become terminal cells.
 
 ## 10. Data Model
 
@@ -369,7 +422,40 @@ The library should support simple and structured data.
 />
 ```
 
-### 10.3 Series data
+### 10.3 Accessor functions
+
+Key-based APIs are convenient, but accessor functions should also be supported or intentionally reserved because they age well with TypeScript and flexible data models.
+
+```ts
+type ChartValue = number | Date;
+type ChartLabel = string | number | Date;
+
+type DataAccessor<T, R> = (datum: T, index: number) => R;
+```
+
+Potential API:
+
+```tsx
+<LineChart
+  data={data}
+  xAccessor={(point) => point.time}
+  yAccessor={(point) => point.latencyMs}
+/>
+```
+
+Internally, flexible input should normalize to a strict representation:
+
+```ts
+type NormalizedPoint = {
+  x: number;
+  y: number;
+  xLabel?: string;
+  yLabel?: string;
+  raw?: unknown;
+};
+```
+
+### 10.4 Series data
 
 For multi-series charts:
 
@@ -420,6 +506,21 @@ type BaseChartOptions = {
 ```
 
 Avoid exposing too many options too early. Start with a small stable surface and expand gradually.
+
+Internally, chart layout should distinguish outer chart bounds from the plot area:
+
+```ts
+type ChartLayout = {
+  outerBounds: ChartBounds;
+  plotBounds: ChartBounds;
+  titleBounds?: ChartBounds;
+  xAxisBounds?: ChartBounds;
+  yAxisBounds?: ChartBounds;
+  legendBounds?: ChartBounds;
+};
+```
+
+This keeps axis, title, legend, grid, and plot rendering from competing for the same cells.
 
 ## 12. Scaling
 
@@ -497,18 +598,20 @@ Example y-axis:
 The library should support a small theme abstraction.
 
 ```ts
+type ChartColor = string;
+
 type ChartTheme = {
-  foreground?: string;
-  background?: string;
-  axis?: string;
-  grid?: string;
-  series?: string[];
-  text?: string;
-  muted?: string;
-  positive?: string;
-  negative?: string;
-  warning?: string;
-  danger?: string;
+  foreground?: ChartColor;
+  background?: ChartColor;
+  axis?: ChartColor;
+  grid?: ChartColor;
+  series?: ChartColor[];
+  text?: ChartColor;
+  muted?: ChartColor;
+  positive?: ChartColor;
+  negative?: ChartColor;
+  warning?: ChartColor;
+  danger?: ChartColor;
 };
 ```
 
@@ -576,7 +679,7 @@ Useful for:
 - dense time-series data
 - compact charts
 
-Braille mode should be implemented after basic Unicode rendering is stable.
+Braille mode should be implemented after basic Unicode rendering is stable. It should not be exposed as a stable v0.1 render mode unless fully implemented and covered by snapshots.
 
 ## 16. Initial Chart Types
 
@@ -617,6 +720,8 @@ Purpose:
 - counts
 - percentages
 - distributions
+
+For v0.1, horizontal bar charts should support non-negative values only. Negative values should either be ignored with an optional development warning or cause the chart to render a graceful fallback. Diverging positive/negative bars can be added later as an explicit feature.
 
 Example:
 
@@ -765,6 +870,22 @@ if height < minimum:
   render compact fallback
 ```
 
+Minimum-size behavior should be defined per chart type. Suggested v0.1 behavior:
+
+```txt
+Sparkline:
+- width < 1 or height < 1: no commands
+
+BarChart:
+- width < 4 or height < 1: render clipped fallback
+
+LineChart:
+- width < 4 or height < 3 with axis enabled: disable axis or render fallback
+
+Histogram:
+- width < 4 or height < 1: render clipped fallback
+```
+
 ## 20. Responsiveness and Resize
 
 Charts must handle dynamic width and height.
@@ -898,11 +1019,12 @@ Examples:
 
 ### 24.4 Compatibility tests
 
-Test rendering modes:
+Test stable rendering modes:
 
 - ascii
 - unicode
-- braille
+
+When Braille mode is added, it should receive equivalent compatibility and snapshot coverage.
 
 ### 24.5 Visual examples
 
@@ -1082,6 +1204,8 @@ Recommended v0.1:
 ```txt
 Core:
 - draw command model
+- command rendering invariants
+- string renderer for tests and documentation
 - linear scale
 - band scale
 - layout helpers
@@ -1154,7 +1278,7 @@ opentui-charts/
         render-mode/
           ascii.ts
           unicode.ts
-          braille.ts
+          future-braille.ts (add when Braille mode becomes stable)
         charts/
           sparkline.ts
           bar-chart.ts
@@ -1462,16 +1586,17 @@ Start with this order:
 
 ```txt
 1. Draw command types
-2. String renderer for tests
-3. Geometry helpers
-4. Linear scale
-5. Sparkline
-6. Bar chart
-7. OpenTUI FrameBuffer adapter
-8. React Sparkline and BarChart
-9. Line chart
-10. Histogram
-11. Documentation and examples
+2. Command rendering invariants
+3. String renderer for tests
+4. Geometry helpers
+5. Linear scale
+6. Sparkline
+7. Bar chart
+8. OpenTUI FrameBuffer adapter
+9. React Sparkline and BarChart
+10. Line chart
+11. Histogram
+12. Documentation and examples
 ```
 
 This order reduces risk because it validates the architecture before introducing harder chart types.
