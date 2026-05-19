@@ -6,6 +6,7 @@ Guidance for coding agents working in `opentui-charts`.
 
 This is an early terminal-native charting library for OpenTUI.
 Read `opentui_charts_library_design_doc.md` before significant design/API work.
+Read `ADDING_CHARTS.md` before adding a new chart or graph type.
 The design goal is a generic ecosystem package, not an app-specific chart set.
 Keep public APIs small, stable, strongly typed, framework-friendly, and testable.
 
