@@ -11,3 +11,4 @@ export * from "./layout/chart-layout";
 export * from "./charts/sparkline";
 export * from "./charts/bar-chart";
 export * from "./charts/line-chart";
+export * from "./charts/histogram";
