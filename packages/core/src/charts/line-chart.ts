@@ -2,31 +2,80 @@ import type { ChartColor, DrawCommand, RenderMode } from "../commands";
 import { clamp } from "../geometry";
 import { createLinearScale } from "../scale/linear";
 
+/**
+ * Normalized point used by the line chart renderer.
+ *
+ * Public input may be plain numbers or objects; accepted object values are
+ * converted to this shape by {@link normalizeLineData}. Points are sorted by
+ * ascending `x` before plotting.
+ */
 export type LineChartPoint = {
+  /** X coordinate in data space. Plain numeric input uses the array index. */
   x: number;
+  /** Y coordinate in data space. Non-finite values are filtered out. */
   y: number;
+  /** Optional user label preserved from object input for callers that inspect normalized data. */
   label?: string;
+  /** Original datum preserved for callers that inspect normalized data. */
   raw?: unknown;
 };
 
+/**
+ * Options for creating terminal draw commands for a line chart.
+ *
+ * Dimensions are floored to integer cells and clamped to zero or greater. A
+ * zero width or height renders no commands; very small charts render clipped
+ * fallback text. The default `renderMode` is `"unicode"`; `"ascii"` selects
+ * ASCII-safe glyphs. Axis options default to enabled through `showAxis`, while
+ * `showXAxis` and `showYAxis` can override each axis independently. Grid lines
+ * are opt-in with `showGrid`.
+ */
 export type LineChartOptions = {
+  /**
+   * Input data as finite numbers, `{ y }`/`{ value }` objects, or `{ x, y }` /
+   * `{ x, value }` objects. Invalid values are skipped.
+   */
   data: readonly unknown[];
+  /** Chart width in terminal cells. */
   width: number;
+  /** Chart height in terminal cells. */
   height: number;
+  /** Rendering glyph family; defaults to `"unicode"`. */
   renderMode?: RenderMode;
+  /** Optional lower y-domain bound; ignored when non-finite. */
   min?: number;
+  /** Optional upper y-domain bound; ignored when non-finite. */
   max?: number;
+  /** Enables or disables both axes unless overridden by `showXAxis` or `showYAxis`; defaults to `true`. */
   showAxis?: boolean;
+  /** Enables or disables the bottom x-axis; defaults to `showAxis`. */
   showXAxis?: boolean;
+  /** Enables or disables the left y-axis labels and axis line; defaults to `showAxis`. */
   showYAxis?: boolean;
+  /** Enables or disables the single middle horizontal grid line; defaults to `false`. */
   showGrid?: boolean;
+  /** Formats visible y-axis boundary labels; units and localization are caller-owned. */
   valueFormatter?: (value: number) => string;
+  /** Foreground color for the plotted line. */
   fg?: ChartColor;
+  /** Foreground color for axis lines and y-axis labels. */
   axisColor?: ChartColor;
+  /** Foreground color for grid lines. */
   gridColor?: ChartColor;
+  /** Overrides the glyph used for plotted line segments and single-point charts. */
   lineChar?: string;
 };
 
+/**
+ * Creates draw commands for a line chart.
+ *
+ * Invalid numeric data is filtered, object input is normalized and sorted by
+ * ascending `x`, and line samples are reduced to the available plot width while
+ * preserving endpoints when the plot is wide enough for both ends. Empty data
+ * renders `No data`; equal y-domains are handled by the linear scale rather
+ * than throwing. Commands are pure draw instructions and do not perform
+ * terminal I/O.
+ */
 export function createLineChartCommands(options: LineChartOptions): DrawCommand[] {
   const width = normalizeDimension(options.width);
   const height = normalizeDimension(options.height);
@@ -47,6 +96,7 @@ export function createLineChartCommands(options: LineChartOptions): DrawCommand[
   const max = finiteOrDefault(options.max, Math.max(...points.map((point) => point.y)));
   const [domainMin, domainMax] = normalizeDomain(min, max);
   const formatter = options.valueFormatter ?? defaultValueFormatter;
+  // Reserve only enough columns for the largest visible y-axis boundary label plus the axis line.
   const yAxisWidth = showYAxis ? computeYAxisWidth(domainMin, domainMax, formatter, width) : 0;
   const xAxisHeight = showXAxis ? 1 : 0;
   const plotX = yAxisWidth;
@@ -132,6 +182,13 @@ export function createLineChartCommands(options: LineChartOptions): DrawCommand[
   return commands;
 }
 
+/**
+ * Converts accepted line chart input into finite, x-sorted points.
+ *
+ * Accepted data shapes are finite numbers, objects with finite `y`, and objects
+ * with finite `value`; object `x` is used when finite and otherwise defaults to
+ * the datum index. Non-object, missing, and non-finite values are skipped.
+ */
 export function normalizeLineData(data: readonly unknown[]): LineChartPoint[] {
   const points: LineChartPoint[] = [];
 
@@ -221,6 +278,7 @@ function samplePoints(points: readonly LineChartPoint[], width: number): LineCha
   const lastTargetIndex = width - 1;
 
   for (let i = 0; i < width; i++) {
+    // Map first and last output columns exactly to the source endpoints while spreading interior samples evenly.
     const sourceIndex = Math.round((i / lastTargetIndex) * lastSourceIndex);
     result.push(points[sourceIndex]!);
   }
@@ -272,6 +330,7 @@ type LineChartChars = {
 };
 
 function getLineChartChars(renderMode: RenderMode): LineChartChars {
+  // ASCII mode uses transport-safe glyphs; unicode mode favors terminal-native line accents.
   if (renderMode === "ascii") {
     return { line: "*", horizontalAxis: "-", verticalAxis: "|", grid: "." };
   }

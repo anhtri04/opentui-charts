@@ -2,34 +2,81 @@ import type { ChartColor, DrawCommand, RenderMode } from "../commands";
 import { clamp } from "../geometry";
 import { createBarChartCommands, type BarChartDatum } from "./bar-chart";
 
+/** Orientation used to render histogram buckets. */
 export type HistogramOrientation = "vertical" | "horizontal";
 
+/**
+ * Numeric domain span represented by a histogram bucket.
+ *
+ * Ranges are passed to `labelFormatter`. For non-equal domains, all buckets are
+ * lower-inclusive and upper-exclusive except the final bucket, which includes
+ * the exact maximum value.
+ */
 export type HistogramBucketRange = {
+  /** Lower bucket boundary. */
   min: number;
+  /** Upper bucket boundary. */
   max: number;
+  /** Zero-based bucket index. */
   index: number;
 };
 
+/**
+ * Options for creating terminal draw commands for a histogram.
+ *
+ * `data` accepts finite numbers only; other values are filtered out. Width and
+ * height are floored to integer cells and clamped to zero or greater. A zero
+ * width or height renders no commands, narrow charts render a clipped fallback,
+ * and empty numeric data renders `No data`. The default `renderMode` is
+ * `"unicode"`, default orientation is `"vertical"`, and the default bucket
+ * count is the smaller of the default bucket count and chart width.
+ */
 export type HistogramOptions = {
+  /** Input values; only finite numbers participate in bucket counts. */
   data: readonly unknown[];
+  /** Chart width in terminal cells. */
   width: number;
+  /**
+   * Chart height in terminal cells. Defaults to `buckets` when provided, or the
+   * default bucket count otherwise.
+   */
   height?: number;
+  /** Number of buckets; valid values are floored to at least one before bucket creation. */
   buckets?: number;
+  /** Bucket rendering orientation; defaults to `"vertical"`. */
   orientation?: HistogramOrientation;
+  /** Rendering glyph family; defaults to `"unicode"`. */
   renderMode?: RenderMode;
+  /** Optional lower domain bound; ignored when non-finite. */
   min?: number;
+  /** Optional upper domain bound; ignored when non-finite. */
   max?: number;
+  /** Shows bucket counts in horizontal mode; defaults to `true` there. */
   showValues?: boolean;
+  /** Formats horizontal-mode bucket counts; units and localization are caller-owned. */
   valueFormatter?: (count: number) => string;
+  /** Formats bucket range labels used by horizontal mode and preserved bucket data. */
   labelFormatter?: (range: HistogramBucketRange) => string;
+  /** Optional label width forwarded to the horizontal bar chart renderer. */
   labelWidth?: number;
+  /** Overrides the glyph used to fill bars. */
   barChar?: string;
+  /** Foreground color for bars and fallback text. */
   fg?: ChartColor;
 };
 
 const fallbackMinimumWidth = 4;
 const defaultBucketCount = 8;
 
+/**
+ * Creates draw commands for a histogram.
+ *
+ * Values outside explicit `min`/`max` bounds are excluded from buckets. If the
+ * domain is equal, a single bucket is emitted for values exactly equal to that
+ * domain value. Horizontal orientation delegates to the bar chart renderer;
+ * vertical orientation draws bottom-aligned bucket rectangles without labels or
+ * axes. Commands are pure draw instructions and do not perform terminal I/O.
+ */
 export function createHistogramCommands(options: HistogramOptions): DrawCommand[] {
   const width = normalizeDimension(options.width);
   const height = normalizeDimension(options.height ?? options.buckets ?? defaultBucketCount);
@@ -92,6 +139,7 @@ function createVerticalHistogramCommands(input: {
   if (maxCount <= 0) return [];
 
   const bucketWidth = Math.max(1, Math.floor(input.width / input.buckets.length));
+  // Vertical bars are scaled against the largest bucket and anchored to the bottom row.
   const barChar = input.barChar ?? (input.renderMode === "ascii" ? "#" : "█");
   const commands: DrawCommand[] = [];
 
@@ -137,6 +185,7 @@ function createBuckets(input: {
   input.values.forEach((value) => {
     if (value < input.min || value > input.max) return;
 
+    // Keep the final max value in range instead of overflowing past the last bucket.
     const bucketIndex = value === input.max
       ? input.bucketCount - 1
       : clamp(Math.floor((value - input.min) / bucketSize), 0, input.bucketCount - 1);

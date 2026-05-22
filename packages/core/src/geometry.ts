@@ -1,15 +1,24 @@
 import type { ChartBounds } from "./commands";
 
+/**
+ * Two-dimensional point in terminal-cell coordinates.
+ */
 export type Point = {
   x: number;
   y: number;
 };
 
+/**
+ * Restricts a numeric value to an inclusive range.
+ */
 export function clamp(value: number, min: number, max: number): number {
   if (min > max) return clamp(value, max, min);
   return Math.min(max, Math.max(min, value));
 }
 
+/**
+ * Returns whether a cell position lies inside bounds.
+ */
 export function containsPoint(bounds: ChartBounds, x: number, y: number): boolean {
   return (
     x >= bounds.x &&
@@ -19,6 +28,9 @@ export function containsPoint(bounds: ChartBounds, x: number, y: number): boolea
   );
 }
 
+/**
+ * Returns whether two rectangular bounds overlap with positive area.
+ */
 export function intersectsBounds(a: ChartBounds, b: ChartBounds): boolean {
   return (
     a.x < b.x + b.width &&
@@ -28,6 +40,9 @@ export function intersectsBounds(a: ChartBounds, b: ChartBounds): boolean {
   );
 }
 
+/**
+ * Returns bounds reduced by non-negative padding on each side.
+ */
 export function insetBounds(
   bounds: ChartBounds,
   padding: Partial<{ top: number; right: number; bottom: number; left: number }>,
@@ -45,6 +60,9 @@ export function insetBounds(
   };
 }
 
+/**
+ * Converts bounds to finite integer terminal-cell coordinates and non-negative dimensions.
+ */
 export function normalizeBounds(bounds: ChartBounds): ChartBounds {
   return {
     x: Math.round(finiteOrZero(bounds.x)),

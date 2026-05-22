@@ -1,6 +1,17 @@
 import type { DrawCommand } from "@opentui-charts/core";
 import type { FrameBufferCellStyle, FrameBufferLike } from "./frame-buffer-like";
 
+/**
+ * Paints core draw commands into a minimal frame-buffer target.
+ *
+ * This is the boundary between pure chart command generation and a renderer
+ * backend. Command coordinates are rounded to integer terminal cells with the
+ * origin at the top-left of the supplied `FrameBufferLike`. When `width` or
+ * `height` are present, writes are clipped to those bounds; negative
+ * coordinates are always skipped. Commands are applied in array order, so later
+ * commands paint over earlier cells. `fg` and `bg` values are passed through as
+ * frame-buffer style data for the concrete adapter to translate.
+ */
 export function renderCommandsToFrameBuffer(
   frameBuffer: FrameBufferLike,
   commands: readonly DrawCommand[],
@@ -71,6 +82,7 @@ function effectiveTextWidth(frameBuffer: FrameBufferLike, startX: number): numbe
 }
 
 function firstCellChar(value: string): string {
+  // Frame buffers store one terminal cell at a time; keep only the first code point.
   return Array.from(value)[0] ?? " ";
 }
 

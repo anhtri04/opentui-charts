@@ -1,5 +1,11 @@
+/**
+ * Discrete domain value supported by band scales.
+ */
 export type BandDomainValue = string | number;
 
+/**
+ * Discrete scale that maps domain values to evenly spaced band starts.
+ */
 export type BandScale<T extends BandDomainValue = string> = {
   domain: readonly T[];
   range: [number, number];
@@ -8,6 +14,9 @@ export type BandScale<T extends BandDomainValue = string> = {
   map(value: T): number | undefined;
 };
 
+/**
+ * Creates a band scale for categorical or ordinal values.
+ */
 export function createBandScale<T extends BandDomainValue>(input: {
   domain: readonly T[];
   range: [number, number];
@@ -31,6 +40,7 @@ export function createBandScale<T extends BandDomainValue>(input: {
     };
   }
 
+  // Inner padding is represented as extra step fractions between adjacent bands.
   const denominator = Math.max(1, count + paddingInner * Math.max(0, count - 1));
   const step = absoluteSpan / denominator;
   const bandwidth = step;

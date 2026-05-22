@@ -1,6 +1,20 @@
 import type { ChartColor, DrawCommand, RenderMode } from "../commands";
 import { clamp } from "../geometry";
 
+/**
+ * Options for creating sparkline draw commands.
+ *
+ * `width` and `height` are floored to non-negative integer cell dimensions; zero,
+ * negative, or non-finite dimensions render no commands. `height` defaults to `1`.
+ * `renderMode` defaults to `"unicode"`; use `"ascii"` for ASCII-only glyphs.
+ * Non-finite or non-number values in `data` are ignored before rendering. Empty
+ * normalized data renders clipped `No data` fallback text.
+ *
+ * When `showValue` is true, the latest normalized value is rendered to the right
+ * of the plot. `valueFormatter`, when supplied, formats only that value text and
+ * owns any units or localization. If the value text leaves no room for the plot,
+ * only clipped value text is rendered.
+ */
 export type SparklineOptions = {
   data: readonly unknown[];
   width: number;
@@ -16,6 +30,14 @@ export type SparklineOptions = {
 const unicodeLevels = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"] as const;
 const asciiLevels = [".", "_", "-", "=", "+", "*", "#", "#"] as const;
 
+/**
+ * Creates pure draw commands for a sparkline.
+ *
+ * Data is filtered to finite numbers, sampled to the available plot width, and
+ * drawn as a one-row level sparkline or as point markers across multiple rows.
+ * Invalid dimensions return no commands. Empty normalized data renders `No data`
+ * clipped to the requested width. The default render mode is `"unicode"`.
+ */
 export function createSparklineCommands(options: SparklineOptions): DrawCommand[] {
   const width = normalizeDimension(options.width);
   const height = normalizeDimension(options.height ?? 1);
@@ -94,6 +116,9 @@ function createMultiLineCommands(
   }));
 }
 
+/**
+ * Returns only finite numeric values from arbitrary sparkline input data.
+ */
 export function normalizeNumericData(data: readonly unknown[]): number[] {
   return data.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
 }
@@ -107,6 +132,7 @@ function sampleData(data: readonly number[], width: number): number[] {
   const lastTargetIndex = width - 1;
 
   for (let i = 0; i < width; i++) {
+    // Preserve both endpoints while choosing representative source points across the full series.
     const sourceIndex = Math.round((i / lastTargetIndex) * lastSourceIndex);
     result.push(data[sourceIndex]!);
   }

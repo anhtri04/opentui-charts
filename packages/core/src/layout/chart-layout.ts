@@ -2,6 +2,9 @@ import type { ChartBounds, ChartSize } from "../commands";
 import { insetBounds, normalizeBounds } from "../geometry";
 import { normalizePadding, type ChartPadding } from "./padding";
 
+/**
+ * Standard chart regions derived from an outer size and optional padding.
+ */
 export type ChartLayout = {
   outerBounds: ChartBounds;
   plotBounds: ChartBounds;
@@ -11,6 +14,9 @@ export type ChartLayout = {
   legendBounds?: ChartBounds;
 };
 
+/**
+ * Creates a basic chart layout with normalized outer bounds and inset plot bounds.
+ */
 export function createChartLayout(input: {
   size: ChartSize;
   padding?: Partial<ChartPadding>;

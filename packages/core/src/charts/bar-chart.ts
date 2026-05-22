@@ -1,11 +1,34 @@
 import type { ChartColor, DrawCommand, RenderMode } from "../commands";
 import { clamp } from "../geometry";
 
+/**
+ * A single horizontal bar chart row.
+ *
+ * `label` is clipped to the computed or requested label column width. `value`
+ * must be finite and non-negative to be rendered; invalid, non-finite, and
+ * negative values are filtered out.
+ */
 export type BarChartDatum = {
   label: string;
   value: number;
 };
 
+/**
+ * Options for creating horizontal bar chart draw commands.
+ *
+ * `width` and `height` are floored to non-negative integer cell dimensions; zero,
+ * negative, or non-finite dimensions render no commands. `height` defaults to the
+ * input data length and limits the number of rendered rows. Very narrow charts
+ * render clipped fallback text, and empty normalized data renders clipped
+ * `No data` fallback text.
+ *
+ * `renderMode` defaults to `"unicode"` and selects the default bar glyph unless
+ * `barChar` is provided. Values are shown by default; `valueFormatter`, when
+ * supplied, formats value text and owns units or localization. The value column is
+ * right-aligned at the chart edge. `labelWidth` is clamped to leave room for chart
+ * content; without it, labels use the longest label up to the default maximum and
+ * available width.
+ */
 export type BarChartOptions = {
   data: readonly BarChartDatum[];
   width: number;
@@ -22,6 +45,14 @@ export type BarChartOptions = {
 const fallbackMinimumWidth = 4;
 const defaultMaximumLabelWidth = 12;
 
+/**
+ * Creates pure draw commands for a horizontal bar chart.
+ *
+ * Rows with invalid labels or values are ignored, and only finite non-negative
+ * values are rendered. Bars are scaled against a positive `max` option when
+ * provided, otherwise against the largest normalized value. The default render
+ * mode is `"unicode"`.
+ */
 export function createBarChartCommands(options: BarChartOptions): DrawCommand[] {
   const width = normalizeDimension(options.width);
   const height = normalizeDimension(options.height ?? options.data.length);
@@ -45,6 +76,7 @@ export function createBarChartCommands(options: BarChartOptions): DrawCommand[] 
     const valueGap = valueText.length > 0 ? 1 : 0;
     const labelGap = labelWidth > 0 ? 1 : 0;
     const barStart = labelWidth + labelGap;
+    // Reserve label, gaps, and optional right-aligned value text before scaling the row bar.
     const availableBarWidth = Math.max(0, width - barStart - valueGap - valueText.length);
     const barWidth = max <= 0 ? 0 : Math.round(clamp(datum.value / max, 0, 1) * availableBarWidth);
 

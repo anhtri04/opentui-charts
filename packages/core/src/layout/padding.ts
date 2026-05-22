@@ -1,3 +1,6 @@
+/**
+ * Padding around a chart area, in terminal cells.
+ */
 export type ChartPadding = {
   top: number;
   right: number;
@@ -5,6 +8,9 @@ export type ChartPadding = {
   left: number;
 };
 
+/**
+ * Converts partial padding input to finite non-negative integer cell values.
+ */
 export function normalizePadding(padding?: Partial<ChartPadding>): ChartPadding {
   return {
     top: normalizePaddingValue(padding?.top),

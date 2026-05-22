@@ -3,6 +3,12 @@ import { BarChartRenderable, HistogramRenderable, LineChartRenderable, Sparkline
 
 let registered = false;
 
+/**
+ * Registers the OpenTUI chart renderables used by this React package.
+ *
+ * Registration is idempotent, so React chart components can safely call this
+ * before creating their underlying OpenTUI elements.
+ */
 export function registerOpenTUICharts(): void {
   if (registered) return;
   extend({
@@ -14,6 +20,7 @@ export function registerOpenTUICharts(): void {
   registered = true;
 }
 
+// Teach @opentui/react about the custom element names registered above.
 declare module "@opentui/react" {
   interface OpenTUIComponents {
     opentuiSparkline: typeof SparklineRenderable;

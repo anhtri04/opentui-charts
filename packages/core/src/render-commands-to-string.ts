@@ -1,5 +1,8 @@
 import type { ChartSize, DrawCommand } from "./commands";
 
+/**
+ * Renders draw commands into a newline-delimited string for tests and plain text output.
+ */
 export function renderCommandsToString(
   commands: readonly DrawCommand[],
   size: ChartSize,
@@ -17,6 +20,7 @@ export function renderCommandsToString(
     const cellX = Math.round(x);
     const cellY = Math.round(y);
 
+    // Clipping happens at the cell write boundary so every command type shares it.
     if (cellX < 0 || cellY < 0 || cellX >= width || cellY >= height) return;
 
     grid[cellY]![cellX] = firstCellChar(char);
@@ -79,6 +83,7 @@ function normalizeDimension(value: number): number {
 }
 
 function firstCellChar(value: string): string {
+  // Commands paint one terminal cell, so multi-code-point strings collapse to one character.
   return Array.from(value)[0] ?? " ";
 }
 
@@ -107,6 +112,7 @@ function drawLine(input: {
 
     if (x1 === x2 && y1 === y2) break;
 
+    // Integer error accumulation keeps line rasterization deterministic across renderers.
     const error2 = 2 * error;
 
     if (error2 > -dy) {

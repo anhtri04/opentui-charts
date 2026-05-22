@@ -1,5 +1,8 @@
 import { clamp as clampValue } from "../geometry";
 
+/**
+ * Continuous linear mapping between a numeric domain and range.
+ */
 export type LinearScale = {
   domain: [number, number];
   range: [number, number];
@@ -7,6 +10,9 @@ export type LinearScale = {
   invert(value: number): number;
 };
 
+/**
+ * Creates a linear scale with optional range clamping.
+ */
 export function createLinearScale(input: {
   domain: [number, number];
   range: [number, number];
@@ -19,6 +25,7 @@ export function createLinearScale(input: {
   d1 = Number.isFinite(d1) ? d1 : 1;
 
   if (d0 === d1) {
+    // Expand equal domains symmetrically so mapping remains finite and centered.
     d0 -= 0.5;
     d1 += 0.5;
   }

@@ -15,6 +15,8 @@ This repository is an early TypeScript workspace for a reusable charting layer t
 
 - Sparkline
 - Horizontal bar chart
+- Line chart
+- Histogram
 
 Additional chart types are planned as the public API stabilizes.
 
